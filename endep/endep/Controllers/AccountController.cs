@@ -9,6 +9,9 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using endep.Models;
+using endep.Models.Persona;
+using Microsoft.AspNet.Identity.EntityFramework;
+using System.Collections.Generic;
 
 namespace endep.Controllers
 {
@@ -58,7 +61,7 @@ namespace endep.Controllers
         public ActionResult Login(string returnUrl)
         {
             ViewBag.ReturnUrl = returnUrl;
-            return View();
+            return View("Login", "_LayoutLogin");
         }
 
         //
@@ -70,7 +73,7 @@ namespace endep.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return View(model);
+                return View("Login","_LayoutLogin", model);
             }
 
             // No cuenta los errores de inicio de sesión para el bloqueo de la cuenta
@@ -87,7 +90,7 @@ namespace endep.Controllers
                 case SignInStatus.Failure:
                 default:
                     ModelState.AddModelError("", "Intento de inicio de sesión no válido.");
-                    return View(model);
+                    return View("Login", "_LayoutLogin", model);
             }
         }
 
@@ -139,7 +142,14 @@ namespace endep.Controllers
         [AllowAnonymous]
         public ActionResult Register()
         {
-            return View();
+
+            endepContext db = new endepContext();
+            var list = db.ControlDominios.ToList();
+            list.Add( new ControlDominio { DominioId  = 0, Descripcion = "--- Tipo Documento ---", PadreId = "1" });
+            var res = from ctr in list where ctr.PadreId == "1" orderby ctr.DominioId ascending select ctr;
+            ViewBag.DominioId = new SelectList(res, "DominioId", "Descripcion");
+
+            return View("Register", "_LayoutLogin");
         }
 
         //
@@ -149,27 +159,59 @@ namespace endep.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Register(RegisterViewModel model)
         {
+            var DominioId = Request["DominioId"];
+
+            endepContext dominio = new endepContext();
+            
+
+            if (DominioId == "0")
+            {
+                var list = dominio.ControlDominios.ToList();
+                list.Add(new ControlDominio { DominioId = 0, Descripcion = "--- Tipo Documento ---", PadreId = "1" });
+                var res = from ctr in list where ctr.PadreId == "1" orderby ctr.DominioId ascending select ctr;
+                ViewBag.DominioId = new SelectList(res, "DominioId", "Descripcion", 0);
+                ViewBag.Error = "Seleccion un Tipo de Documento";
+            }
+
+
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, Nombres = model.Nombres, Apellidos = model.Apellidos, TipoDocumento = model.DominioId };
                 var result = await UserManager.CreateAsync(user, model.Password);
+
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
+                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);                    
+
+                   //Construir rol a persona
+                    PersonaDirector persona = new PersonaDirector();                  
+                    PersonaBuilder jugador = new Jugador();
+                    persona.setPersonaBuilder(jugador);
+                    persona.construirRol(user.Id);
+
                     // Para obtener más información sobre cómo habilitar la confirmación de cuenta y el restablecimiento de contraseña, visite http://go.microsoft.com/fwlink/?LinkID=320771
                     // Enviar correo electrónico con este vínculo
                     // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
                     // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
                     // await UserManager.SendEmailAsync(user.Id, "Confirmar cuenta", "Para confirmar la cuenta, haga clic <a href=\"" + callbackUrl + "\">aquí</a>");
 
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToAction("Index", "Inicio");
                 }
                 AddErrors(result);
             }
 
+
             // Si llegamos a este punto, es que se ha producido un error y volvemos a mostrar el formulario
-            return View(model);
+
+
+            var lista = dominio.ControlDominios.ToList();
+            lista.Add(new ControlDominio { DominioId = 0, Descripcion = "--- Tipo Documento ---", PadreId = "1" });
+            var res2 = from ctr in lista where ctr.PadreId == "1" orderby ctr.DominioId ascending select ctr;
+
+            ViewBag.DominioId = new SelectList(res2, "DominioId", "Descripcion", DominioId);               
+            
+          
+            return View("Register", "_LayoutLogin", model);
         }
 
         //
@@ -449,7 +491,7 @@ namespace endep.Controllers
             {
                 return Redirect(returnUrl);
             }
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Inicio");
         }
 
         internal class ChallengeResult : HttpUnauthorizedResult

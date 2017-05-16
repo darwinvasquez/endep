@@ -1,0 +1,33 @@
+﻿@using Microsoft.AspNet.Identity
+@using endep.Models
+<!-- top navigation -->
+<div class="top_nav">
+    <div class="nav_menu">
+        <nav>
+            <div class="nav toggle">
+                <a id="menu_toggle"><i class="fa fa-bars"></i></a>
+            </div>
+            @using (Html.BeginForm("LogOff", "Account", FormMethod.Post, new { id = "logoutForm", @class = "navbar-right" }))
+            {
+            @Html.AntiForgeryToken()
+
+            <ul class="nav navbar-nav navbar-right">
+                <li class="">
+                    <a href="javascript:;" class="user-profile dropdown-toggle" data-toggle="dropdown" aria-expanded="false">                        
+                        <img src="~/images/img.jpg" alt="">@User.Identity.GetNombres() @User.Identity.GetApellidos() 
+                        <span class="fa fa-angle-down"></span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-usermenu pull-right">
+                        <li>@Html.ActionLink("Perfil", "updatePerfil", "Persona")</li>
+                        <li>@Html.ActionLink("Cambiar contraseña", "updatePassword", "Persona")</li>                       
+                        <li><a href="javascript:;">Ayuda</a></li>
+                        <li><a href="javascript:document.getElementById('logoutForm').submit()">Cerrar sesión</a></li>
+                    </ul>                    
+                </li>                
+            </ul>
+            }
+
+        </nav>
+    </div>
+</div>
+<!-- /top navigation -->
